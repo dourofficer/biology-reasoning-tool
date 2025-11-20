@@ -1,0 +1,44 @@
+TEMPLATE_SUBPROBLEM_2 = """
+*PAPER:*
+{{paper}}
+
+*TASK:*
+Analyze the provided scientific paper. Your task is to act as a scientific editor and identify instances of a specific three-part logical argument structure that authors use to build their case. This structure connects their novel findings to established knowledge to propose a new hypothesis or conclusion.
+
+Scan the Results section of the paper carefully to make sure you find all the instances. For each instance you find, extract the three components of this argument, which are defined as follows:
+
+**1. Premise (The "What We Found"):**
+*   **Definition:** An empirical result, observation, or data point generated *specifically within the current study*.
+*   **Identifiers:** Look for direct statements of results ("We found that...", "Our analysis revealed..."), often linked to figures or tables from the current paper ("(Fig. 1a)", "(Extended Data Fig. 7a)").
+*   **Constraint:** This component **must not** be a statement of established knowledge supported by a citation to *another paper*. If a sentence's primary purpose is to state a fact from the literature, it belongs in the Connecting Principle.
+*   **Location:** Crucially, the premise might be ***implicit***. The authors may have established a finding in a previous paragraph and are now using it as the unspoken foundation for a new line of reasoning.
+
+**2. Connecting Principle (The "Why It Matters"):**
+*   **Definition:** A statement of pre-existing knowledge that acts as a logical bridge. It provides the established biological context or mechanism needed to understand the significance of the Premise.
+*   **Identifiers:** This can be a specific mechanism from the literature ("Protein X is known to regulate Pathway Y `(Ref: 12)`"), a general, uncited biological fact ("The methionine cycle generates SAM"), or a summary of the current understanding of a disease ("The mechanism by which... is believed to be... `(Ref: 13, 17)`").
+*   **Constraint:** This is the "lens" through which the new finding is interpreted. It is often, but not always, supported by citations to external literature.
+
+**3. Interpretation (The "What It Means"):**
+*   **Definition:** The novel conclusion, testable hypothesis, or new mechanistic explanation that emerges from combining the Premise with the Connecting Principle.
+*   **Identifiers:** Look for forward-looking or inferential language: "Therefore, we hypothesized...", "These findings suggest that...", "This indicates that...", "A prediction based on this hypothesis is...". It often leads into a description of a follow-up experiment ("To test this...").
+*   **Constraint:** This represents the author's intellectual contribution in the argument—the new idea they are proposing based on their data. While might be confusing, but this component IS NOT the experiment itself, it just states an interpretation, which means a conclusion or a hypothesis.
+
+**Extraction Rules:**
+*   **Verbatim Extraction:** Extract the text exactly as it appears in the document.
+*   **Logical Flow:** The components do not need to be contiguous sentences, but they must form a coherent logical unit in the text.
+*   **Implicit knowledge:** For any components that are implicit in the logic flow but can be found within the document, always make them explicit by extracting them verbatim from the document. Mark the implicit components with prefix "(implicit) ..." before reporting the content.
+*   **Citations:** You must standardize all citations found within the extracted text to the format `(Ref: [numbers])`. This standardization does not conflict with the verbatim extraction rule and is prioritized.
+    *   *Original:* "...methylation activity¹³,¹⁷." -> *Converted:* "...methylation activity `(Ref: 13, 17)`."
+    *   *Original:* "...(H3K27me3) 25," -> *Converted:* "...(H3K27me3) `(Ref: 25)`,"
+
+**Output Format:**
+Report each instance in the following JSON format. Provide the context of where you find an instance before reporting it.
+
+```json
+{
+  "premise_finding": "[Verbatim text of the result from the current study. If the premise is implicit, state 'Implicit finding:' followed by a concise summary of the finding from earlier in the text.]",
+  "connecting_principle": "[Verbatim text of the established biological fact/mechanism]",
+  "interpretation_hypothesis": "[Verbatim text of the resulting hypothesis or conclusion]"
+}
+```
+""".strip()

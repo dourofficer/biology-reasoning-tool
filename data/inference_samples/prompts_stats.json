@@ -1,0 +1,8 @@
+{
+    "total_requests": 10,
+    "successful_requests": 7,
+    "failed_requests": 3,
+    "failed_request_ids": [],
+    "elapsed_time": 17.64698600769043,
+    "throughput": 0.3966683034116676
+}
