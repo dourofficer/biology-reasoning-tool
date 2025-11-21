@@ -14,8 +14,8 @@ vllm serve openai/gpt-oss-20b \
 	--gpu-memory-utilization 0.90 \
 	--tensor-parallel-size 1 \
 	--disable-log-requests \
-	--max-model-len 8000 \
-	--max-num-batched-tokens 4000 \
+	--max-model-len 32000 \
+	--max-num-batched-tokens 16000 \
 	--generation-config auto
 
 

@@ -1,4 +1,5 @@
 import json
+import re
 
 def read_jsonl(filepath):
     data = []
@@ -9,4 +10,17 @@ def read_jsonl(filepath):
                 data.append(json_object)
             except json.JSONDecodeError as e:
                 print(f"Error decoding JSON on line: {line.strip()}. Error: {e}")
+    return data
+
+def parse_json_from_text(text_blob: str):
+    pattern = r"```json(.*?)```"
+    match = re.search(pattern, text_blob, re.DOTALL)
+
+    if not match: return None
+
+    json_string = match.group(1).strip()
+    try: 
+        data = json.loads(json_string)
+    except: 
+        data = None
     return data

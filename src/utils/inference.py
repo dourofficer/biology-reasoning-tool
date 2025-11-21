@@ -2,12 +2,12 @@ import json
 import requests
 import time
 import argparse
-import threading
 import os
 import yaml
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def send_request(url, pload_config, data, request_id, results, errors, semaphore, pbar):
+def send_request(url, pload_config, data, request_id):
     """Sends a single request to the vLLM server."""
     headers = {"Content-Type": "application/json"}
     prompt = data.get("prompt")
@@ -20,69 +20,85 @@ def send_request(url, pload_config, data, request_id, results, errors, semaphore
         "stream": False
     }
 
+    result_entry = {}
+    error_entry = None
+
     try:
-        semaphore.acquire()
-        response = requests.post(url, headers=headers, json=pload, timeout=1200)
+        # Reduced timeout to 300s (5 mins) to prevent massive hangs on stuck requests
+        response = requests.post(url, headers=headers, json=pload, timeout=600)
         response.raise_for_status()
 
         response_json = response.json()
-        results[request_id] = {
+        
+        # Handle cases where reasoning_content might be missing depending on model
+        message = response_json["choices"][0]["message"]
+        reasoning = message.get("reasoning_content", None)
+        
+        result_entry = {
             "request_id": request_id,
-            "reasoning": response_json["choices"][0]["message"]["reasoning_content"],
-            "response": response_json["choices"][0]["message"]["content"],
+            "reasoning": reasoning,
+            "response": message["content"],
             **data
         }
-    except requests.exceptions.RequestException as e:
-        errors[request_id] = str(e)
-        results[request_id] = {
+    except Exception as e:
+        error_entry = (request_id, str(e))
+        result_entry = {
+            "request_id": request_id,
             "prompt": prompt,
             "response": None,
             **data
         }
-    finally:
-        semaphore.release()
-        pbar.update(1)
+    
+    return request_id, result_entry, error_entry
 
 def run_inference(config_path, input_file, results_file):
-    """Run batch inference with config file."""
+    """Run batch inference with config file using ThreadPoolExecutor."""
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
-    # Extract connection params
     hostname = config.pop("hostname")
     port = config.pop("port")
+    # This now controls actual thread count, not just active requests
     concurrent_requests = config.pop("concurrent_requests", 10)
     
     url = f"http://{hostname}:{port}/v1/chat/completions"
-    pload_config = config  # Remaining config is for payload
+    pload_config = config
     
     dataset = []
     with open(input_file, "r") as f:
         for line in f:
-            dataset.append(json.loads(line))
+            if line.strip(): # Skip empty lines
+                dataset.append(json.loads(line))
 
     results = {}
     errors = {}
     start_time = time.time()
 
-    semaphore = threading.Semaphore(concurrent_requests)
+    print(f"Starting inference with {concurrent_requests} concurrent workers...")
 
-    with tqdm(total=len(dataset), desc="Processing requests") as pbar:
-        threads = []
-        for i, data in enumerate(dataset):
-            thread = threading.Thread(
-                target=send_request, 
-                args=(url, pload_config, data, i, results, errors, semaphore, pbar)
-            )
-            threads.append(thread)
-            thread.start()
+    # USE THREADPOOLEXECUTOR INSTEAD OF RAW THREADS
+    with ThreadPoolExecutor(max_workers=concurrent_requests) as executor:
+        # Submit all tasks to the pool
+        future_to_req = {
+            executor.submit(send_request, url, pload_config, data, i): i 
+            for i, data in enumerate(dataset)
+        }
 
-        for thread in threads:
-            thread.join()
+        # Process results as they complete
+        with tqdm(total=len(dataset), desc="Processing requests") as pbar:
+            for future in as_completed(future_to_req):
+                request_id, result_data, error_data = future.result()
+                
+                results[request_id] = result_data
+                if error_data:
+                    errors[error_data[0]] = error_data[1]
+                
+                pbar.update(1)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
 
+    # Write sorted results
     sorted_results = [results[i] for i in sorted(results.keys())]
 
     with open(results_file, "w") as outfile:
@@ -90,7 +106,7 @@ def run_inference(config_path, input_file, results_file):
             json.dump(result, outfile)
             outfile.write('\n')
 
-    successful_requests = sum(1 for res in results.values() if res["response"] is not None)
+    successful_requests = sum(1 for res in results.values() if res.get("response") is not None)
     total_requests = len(dataset)
     throughput = successful_requests / elapsed_time if elapsed_time > 0 else 0
 
@@ -114,10 +130,10 @@ def run_inference(config_path, input_file, results_file):
 
     if errors:
         print("=" * 20)
-        print("Errors:")
-        print("=" * 20)
-        for request_id, error in errors.items():
-            print(f"Request ID: {request_id}, Error: {error}")
+        print(f"Encoutered {len(errors)} errors. First 5:")
+        for i, (rid, err) in enumerate(errors.items()):
+            if i >= 5: break
+            print(f"ID {rid}: {err}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script for vLLM server.")

@@ -1,8 +1,8 @@
 model: openai/gpt-oss-20b
 temperature: 0.9
-max_tokens: 32000
+max_tokens: 16000
 reasoning_effort: medium
 
-hostname: 34.67.179.2
+hostname: 34.58.67.37
 port: 8881
-concurrent_requests: 10
+concurrent_requests: 8
