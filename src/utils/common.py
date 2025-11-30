@@ -1,6 +1,11 @@
 import json
 import re
 
+def read_json(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return data
+
 def read_jsonl(filepath):
     data = []
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -24,3 +29,21 @@ def parse_json_from_text(text_blob: str):
     except: 
         data = None
     return data
+
+def parse_json(text_blob: str):
+    pattern = r"```json(.*?)```"
+    matches = re.findall(pattern, text_blob, re.DOTALL)
+
+    if not matches:
+        return []
+
+    results = []
+    for json_string in matches:
+        json_string = json_string.strip()
+        try:
+            data = json.loads(json_string)
+            results.append(data)
+        except:
+            pass
+    
+    return results

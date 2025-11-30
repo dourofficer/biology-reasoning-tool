@@ -25,7 +25,7 @@ def send_request(url, pload_config, data, request_id):
 
     try:
         # Reduced timeout to 300s (5 mins) to prevent massive hangs on stuck requests
-        response = requests.post(url, headers=headers, json=pload, timeout=600)
+        response = requests.post(url, headers=headers, json=pload, timeout=900)
         response.raise_for_status()
 
         response_json = response.json()

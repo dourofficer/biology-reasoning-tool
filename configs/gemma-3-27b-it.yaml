@@ -1,7 +1,6 @@
-model: openai/gpt-oss-20b
+model: unsloth/gemma-3-27b-it
 temperature: 0.9
-max_tokens: 48000
-reasoning_effort: high
+max_tokens: 16000
 
 hostname: 35.188.36.133
 port: 8881
