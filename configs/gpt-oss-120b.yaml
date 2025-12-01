@@ -1,6 +1,5 @@
-model: openai/gpt-oss-20b
+model: openai/gpt-oss-120b
 temperature: 0.9
-max_tokens: 48000
 reasoning_effort: high
 
 hostname: 34.12.60.86

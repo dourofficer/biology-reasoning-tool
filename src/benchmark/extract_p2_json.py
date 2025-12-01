@@ -7,6 +7,11 @@ python -m src.benchmark.extract_p2_json \
 
 python -m src.benchmark.extract_p2_json \
     --input-folder "./data/casestudies/json" \
+    --output-folder "./data/casestudies/problem02-v2/gpt-oss-120b" \
+    --config-path "./configs/gpt-oss-120b.yaml"
+
+python -m src.benchmark.extract_p2_json \
+    --input-folder "./data/casestudies/json" \
     --output-folder "./data/casestudies/problem02-v2/gemma-3-27b-it" \
     --config-path "./configs/gemma-3-27b-it.yaml"
 
@@ -14,6 +19,11 @@ python -m src.benchmark.extract_p2_json \
     --input-folder "./data/casestudies/json" \
     --output-folder "./data/casestudies/problem02-v2/medgemma-27b-it" \
     --config-path "./configs/medgemma-27b-it.yaml"
+
+python -m src.benchmark.extract_p2_json \
+    --input-folder "./data/casestudies/json" \
+    --output-folder "./data/casestudies/problem02-v2/qwen3-32b" \
+    --config-path "./configs/qwen3-32b.yaml"
 """
 
 from .templates import TEMPLATE_SUBPROBLEM_2c
@@ -66,6 +76,7 @@ def build_prompts(input_folder: Path, output_folder: Path):
 def aggregate_results(output_folder: Path):
     def contains_ref(row):
         cp = row["connecting_principle"]
+        # return True
         return "(Ref:" in cp
     
     responses_file = output_folder / "responses.jsonl"
@@ -86,7 +97,7 @@ def aggregate_results(output_folder: Path):
                 for triplet in triplets:
                     new_row = {
                         "title": title,
-                        "from": filestem, 
+                        # "from": filestem, 
                         "subsection": subsection,
                         **triplet
                     }    
@@ -112,6 +123,7 @@ def main():
     parser.add_argument("-i", "--input-folder", type=Path, required=True)
     parser.add_argument("-c", "--config-path", type=Path, required=True)
     parser.add_argument("-o", "--output-folder", type=Path, required=True)
+    parser.add_argument("--aggregate-only", action='store_true')
     args = parser.parse_args()
 
     input_folder = args.input_folder.resolve()
@@ -121,21 +133,22 @@ def main():
     responses_file = output_folder / "responses.jsonl"
     responses_file.parent.mkdir(parents=True, exist_ok=True)
     
-    # 1. Build the prompts from the markdown files
-    print("--- Step 1: Building Prompts ---")
-    prompts_file = build_prompts(input_folder, output_folder)
+    if not args.aggregate_only:
+        # 1. Build the prompts from the markdown files
+        print("--- Step 1: Building Prompts ---")
+        prompts_file = build_prompts(input_folder, output_folder)
 
-    # 2. Run the inference using the generated prompts
-    print("\n--- Step 2: Running Inference ---")
-    print(f"Using config: {config_path}")
-    print(f"Input prompts: {prompts_file}")
-    print(f"Saving responses to: {responses_file}")
-    
-    run_inference(
-        str(config_path),
-        str(prompts_file),
-        str(responses_file)
-    )
+        # 2. Run the inference using the generated prompts
+        print("\n--- Step 2: Running Inference ---")
+        print(f"Using config: {config_path}")
+        print(f"Input prompts: {prompts_file}")
+        print(f"Saving responses to: {responses_file}")
+        
+        run_inference(
+            str(config_path),
+            str(prompts_file),
+            str(responses_file)
+        )
 
     # 3. Parse results
     print("\n--- Step 3: Parsing Results ---")

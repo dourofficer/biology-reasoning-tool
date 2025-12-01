@@ -1,0 +1,8 @@
+model: Qwen/Qwen3-32B
+temperature: 0.6
+top_k: 20
+top_p: 0.95
+
+hostname: 34.12.60.86
+port: 8881
+concurrent_requests: 4

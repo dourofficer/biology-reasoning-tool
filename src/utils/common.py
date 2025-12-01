@@ -31,6 +31,12 @@ def parse_json_from_text(text_blob: str):
     return data
 
 def parse_json(text_blob: str):
+    try:
+        data = json.loads(text_blob)
+        return [data]
+    except:
+        pass
+    
     pattern = r"```json(.*?)```"
     matches = re.findall(pattern, text_blob, re.DOTALL)
 
