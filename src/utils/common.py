@@ -1,4 +1,5 @@
 import json
+import csv
 import re
 
 def read_json(filepath):
@@ -31,12 +32,13 @@ def parse_json_from_text(text_blob: str):
     return data
 
 def parse_json(text_blob: str):
+    text_blob = text_blob.strip()
     try:
         data = json.loads(text_blob)
         return [data]
     except:
         pass
-    
+
     pattern = r"```json(.*?)```"
     matches = re.findall(pattern, text_blob, re.DOTALL)
 
@@ -53,3 +55,24 @@ def parse_json(text_blob: str):
             pass
     
     return results
+
+def json_to_csv(json_file, csv_file):
+    with open(json_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Paper Title', 'Subsection', 'Type', 'Main Content', 'Context', 'Outcome'])
+
+        title = data.get('paper_title', '')
+        for section in data.get('extractions', []):
+            sub_name = section.get('subsection', '')
+            for triplet in section.get('triplets', []):
+                writer.writerow([
+                    title,
+                    sub_name,
+                    triplet.get('type', ''),
+                    triplet.get('main_content', ''),
+                    triplet.get('context', ''),
+                    triplet.get('outcome', '')
+                ])
