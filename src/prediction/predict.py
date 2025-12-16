@@ -1,5 +1,16 @@
+"""
+Prediction pipeline for Q1 and Q2 triplets.
+
+Usage:
+python -m src.benchmark.prediction_pipeline \
+    --paper-path "./data/casestudies/json/mechanical.json" \
+    --triplets-file "./data/casestudies/triplets.linhhuynh.mechanical.tsv" \
+    --output-folder "./data/casestudies/prediction/gemini-3-pro" \
+    --config-path "./configs/gemini-3-pro.yaml"
+"""
+
 from .templates import TEMPLATE_PREDICTION_1, TEMPLATE_PREDICTION_2
-from ..utils.inference import run_inference
+from ..utils.inference_gemini import run_inference
 from ..utils.common import read_jsonl, read_json, parse_json, read_tsv
 from ..utils.document_builder import generate_document
 from pathlib import Path
@@ -19,11 +30,21 @@ def build_prompt(prefix, input):
 
 def build_prompts(paper_path: Path, triplets_file: Path, output_folder: Path):
     """
-    Finds all .md files in a folder, creates a prompt for each, and saves them
-    to a 'tmp.jsonl' file in the same folder.
+    Docstring for build_prompts
     
-    Args:
-        input_folder: The path to the folder containing the .md files.
+    :param paper_path: Path to a paper in JSON format.
+    :type paper_path: Path
+    
+    :param triplets_file: Path to a the prepared curated file of triplets for Q1 and Q2,
+        in which Q1 = (research question, literature, experiment)
+        and      Q2 = (experiment result, literature, suggested hypothesis)
+    :type triplets_file: Path
+    
+    :param output_folder: The output folder storing built prompts for entries in 
+        the triplets_file. There will be adjustment depending on the entry type 
+        (Q1 or Q2). The responses for calling API and aggregated results will also 
+        be stored in this directory.
+    :type output_folder: Path
     """
     triplets = read_tsv(triplets_file)
     paper = read_json(paper_path)
@@ -81,12 +102,76 @@ def aggregate_results(output_folder: Path):
 
     return results_jsonl, results_csv
 
-if __name__ == "__main__":
-    # build_prompts(
-    #     paper_path=Path("./data/casestudies/json/mechanical.json"),
-    #     triplets_file=Path("./data/casestudies/triplets.linhhuynh.mechanical.tsv"),
-    #     output_folder=Path("./data/casestudies/prediction/gemini-3-pro")
-    # )
-    aggregate_results(
-        output_folder=Path("./data/casestudies/prediction/gemini-3-pro")
+def main():
+    parser = argparse.ArgumentParser(
+        description="Build prompts and aggregate prediction results for Q1/Q2 triplets"
     )
+    parser.add_argument(
+        "-p", "--paper-path",
+        type=Path,
+        required=True,
+        help="Path to paper in JSON format"
+    )
+    parser.add_argument(
+        "-t", "--triplets-file",
+        type=Path,
+        required=True,
+        help="Path to TSV file containing curated triplets for Q1 and Q2"
+    )
+    parser.add_argument(
+        "-o", "--output-folder",
+        type=Path,
+        required=True,
+        help="Path to output folder for prompts, responses, and results"
+    )
+    parser.add_argument(
+        "-c", "--config-path",
+        type=Path,
+        required=True,
+        help="Path to model configuration file"
+    )
+    parser.add_argument(
+        "--aggregate-only",
+        action="store_true",
+        help="Skip prompt building and inference, only aggregate existing results"
+    )
+    args = parser.parse_args()
+
+    paper_path = args.paper_path.resolve()
+    triplets_file = args.triplets_file.resolve()
+    output_folder = args.output_folder.resolve()
+    config_path = args.config_path.resolve()
+
+    responses_file = output_folder / "responses.jsonl"
+    responses_file.parent.mkdir(parents=True, exist_ok=True)
+
+    if not args.aggregate_only:
+        # 1. Build the prompts from the paper and triplets
+        print("--- Step 1: Building Prompts ---")
+        print(f"Paper: {paper_path}")
+        print(f"Triplets: {triplets_file}")
+        prompts_file = build_prompts(paper_path, triplets_file, output_folder)
+
+        # 2. Run the inference using the generated prompts
+        print("\n--- Step 2: Running Inference ---")
+        print(f"Using config: {config_path}")
+        print(f"Input prompts: {prompts_file}")
+        print(f"Saving responses to: {responses_file}")
+        
+        run_inference(
+            str(config_path),
+            str(prompts_file),
+            str(responses_file)
+        )
+
+    # 3. Aggregate results
+    print("\n--- Step 3: Aggregating Results ---")
+    results_jsonl, results_csv = aggregate_results(output_folder)
+    print(f"Saving results to jsonl at: {results_jsonl}")
+    print(f"Saving results to csv at: {results_csv}")
+
+    print("\nPipeline finished successfully.")
+
+
+if __name__ == "__main__":
+    main()

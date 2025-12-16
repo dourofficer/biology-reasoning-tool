@@ -204,6 +204,15 @@ The extraction pipeline identifies logical argument structures where authors:
 
 See `documentation/experiment_overview.md` for detailed explanation of the experimental reasoning framework.
 
-## Performance
+## Technical Concerns
 
-Throughput varies by model, context length, and hardware. In your config file, be aware of `concurrent_requests` in configs to optimize for your setup. The higher `concurent_requests`, the larger the throughput, as well as the higher chance of timeout.
+### Inference throughput
+For more optimized batch processing, you may want to adopt the official script: https://github.com/vllm-project/vllm/blob/main/examples/offline_inference/batch_llm_inference.py
+
+Instead, in this repo, I opted for building a minimal yet more configurable script for handling input-output and steaming. Throughput varies by model, context length, and hardware. In your config file, be aware of `concurrent_requests` in configs to optimize for your setup. The higher `concurent_requests`, the larger the throughput, as well as the higher chance of timeout.
+
+### PDF2Text
+My current pipeline does not process PDF directly because open models cannot work with PDF natively. Instead it first OCR the PDF to text before using LLM.
+1. The quality of OCR-ed text may affect the quality of extraction and 
+2. open-source solutions are not reliable as proprietary models (Gemini/GPT/etc). Rough observation: gpt-oss-20b can extract 20 triples with OCR-ed text from the best opensource solution I found, meanwhile it can extract 25 triples with clean OCR-text from Gemini.
+Currently I use Gemini to do the OCR. I made this decision because: (1) I want to focus on the capability of LLM at extracting first, having noisy input data would make my judgement not clear, and (2) I suppose that when we scale up our experiment with thousands of papers, they will all be open-access paper with clean text version, hence no need for pre-processing PDF->text.
