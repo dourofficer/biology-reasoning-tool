@@ -1,6 +1,7 @@
 import json
 import csv
 import re
+import pandas as pd
 
 def read_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -17,6 +18,14 @@ def read_jsonl(filepath):
             except json.JSONDecodeError as e:
                 print(f"Error decoding JSON on line: {line.strip()}. Error: {e}")
     return data
+
+def read_csv(filepath):
+    df = pd.read_csv(filepath, keep_default_na=False)
+    return df.to_dict(orient='records')
+
+def read_tsv(filepath):
+    df = pd.read_csv(filepath, sep='\t', keep_default_na=False)
+    return df.to_dict(orient='records')
 
 def parse_json_from_text(text_blob: str):
     pattern = r"```json(.*?)```"
@@ -56,7 +65,35 @@ def parse_json(text_blob: str):
     
     return results
 
-def json_to_csv(json_file, csv_file):
+def flatten_json_to_csv(json_file, csv_file):
+    """
+
+    This is the data structure to flatten out:
+    ```json
+    {
+    "paper_title": "Title of the paper",
+    "extractions": [
+        {
+        "subsection": "Name of subsection",
+        "triplets": [
+            {
+            "type": "Q1",
+            "main_content": "The research question or goal (verbatim) OR (missing)",
+            "context": "Background/justification for approach (verbatim) OR (missing)",
+            "outcome": "The method/analysis performed (verbatim) OR (missing)"
+            },
+            {
+            "type": "Q2",
+            "main_content": "The empirical observation (verbatim) OR (missing)",
+            "context": "Literature or established principle (verbatim) OR (missing)",
+            "outcome": "The interpretation/conclusion (verbatim) OR (missing)"
+            }
+        ]
+        }
+    ]
+    }
+    ```
+    """
     with open(json_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
 

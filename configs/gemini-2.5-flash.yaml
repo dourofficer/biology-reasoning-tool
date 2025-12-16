@@ -1,0 +1,9 @@
+api_key: AIzaSyCgC8TM3stO0fqgv7lPP1UjJlaoTxPxfqE
+model_name: gemini-2.5-flash
+topP: 0.8
+topK: 
+thinkingConfig:
+  thinkingBudget: 1000
+
+concurrent_requests: 5
+temperature: 1.0
