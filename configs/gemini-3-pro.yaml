@@ -1,9 +1,9 @@
-api_key: AIzaSyCgC8TM3stO0fqgv7lPP1UjJlaoTxPxfqE
+api_key: AIzaSyD-35eZTU6lXhxRMPddDy2ataShCKaBu_4
 model_name: gemini-3-pro-preview
 topP: 
 topK: 
 thinkingConfig:
   thinkingBudget: 64000
 
-concurrent_requests: 2
+concurrent_requests: 5
 temperature: 1.0

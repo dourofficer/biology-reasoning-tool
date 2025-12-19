@@ -1,0 +1,9 @@
+{
+    "model": "gemini-2.5-flash",
+    "total_requests": 2,
+    "successful_requests": 2,
+    "failed_requests": 0,
+    "failed_request_ids": [],
+    "elapsed_time": 39.69862604141235,
+    "throughput": 0.050379577316193844
+}

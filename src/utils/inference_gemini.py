@@ -4,60 +4,106 @@ import time
 import argparse
 import os
 import yaml
+import base64
+import mimetypes
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def send_request(url, generation_config, api_key, data, request_id):
-    """Sends a single request to the Google Gemini API."""
+def encode_file_to_base64(file_path):
+    """Read and encode file to base64, also detect MIME type."""
+    mime_type, _ = mimetypes.guess_type(file_path)
     
-    # Gemini uses x-goog-api-key header
+    # Fallback MIME type detection based on extension
+    if mime_type is None:
+        ext = os.path.splitext(file_path)[1].lower()
+        mime_map = {
+            '.pdf': 'application/pdf',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.webp': 'image/webp',
+            '.gif': 'image/gif'
+        }
+        mime_type = mime_map.get(ext, 'application/octet-stream')
+    
+    with open(file_path, "rb") as f:
+        file_data = base64.b64encode(f.read()).decode('utf-8')
+    
+    return file_data, mime_type
+
+def send_request(url, generation_config, api_key, data, request_id):
+    """Sends a single request to the Google Gemini API with optional file attachment."""
+    
     headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": api_key
     }
     
     prompt = data.get("prompt")
+    file_path = data.get("file_path")
     
-    # specific Gemini payload structure
+    # Build parts array
+    parts = []
+    
+    # Add text prompt
+    if prompt:
+        parts.append({"text": prompt})
+
+    # Add file if provided
+    if file_path:
+        try:
+            file_data, mime_type = encode_file_to_base64(file_path)
+            parts.append({
+                "inlineData": {
+                    "mimeType": mime_type,
+                    "data": file_data
+                }
+            })
+        except Exception as e:
+            error_entry = (request_id, f"File encoding error: {str(e)}")
+            result_entry = {
+                "request_id": request_id,
+                "prompt": prompt,
+                "response": None,
+                "error": f"File encoding error: {str(e)}",
+                **data
+            }
+            return request_id, result_entry, error_entry
+    
+    # Gemini payload structure
     payload = {
         "contents": [
             {
-                "parts": [
-                    {"text": prompt}
-                ]
+                "parts": parts
             }
         ],
-        # Pass the remaining config items (temperature, topP, thinkingConfig) here
         "generationConfig": generation_config
     }
-
+    
     result_entry = {}
     error_entry = None
-
+    
     try:
         # Timeout set to 60s per request, adjust as needed
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response = requests.post(url, headers=headers, json=payload, timeout=900)
         
         # Check for HTTP errors
         if response.status_code != 200:
-            # Try to parse the error message from Google
             try:
                 err_msg = response.json().get('error', {}).get('message', response.text)
             except:
                 err_msg = response.text
             raise Exception(f"HTTP {response.status_code}: {err_msg}")
-
+        
         response_json = response.json()
         
         # Parse Gemini Response
-        # Note: Gemini may return an empty content if blocked by safety settings
         candidates = response_json.get("candidates", [])
         
         if not candidates:
-            # Handle cases where prompt was blocked entirely
             prompt_feedback = response_json.get("promptFeedback", {})
             raise Exception(f"No candidates returned. Feedback: {prompt_feedback}")
-
+        
         candidate = candidates[0]
         finish_reason = candidate.get("finishReason")
         
@@ -68,10 +114,7 @@ def send_request(url, generation_config, api_key, data, request_id):
             text_content = None
             if finish_reason != "STOP":
                 raise Exception(f"Generation stopped due to: {finish_reason}")
-
-        # Gemini 2.0 Thinking models currently output thoughts in the text or metadata
-        # Standard API doesn't isolate 'reasoning_content' like DeepSeek/OpenAI yet, 
-        # so we set it to None or capture if specific metadata exists in future versions.
+        
         reasoning = None 
         
         result_entry = {
@@ -81,7 +124,7 @@ def send_request(url, generation_config, api_key, data, request_id):
             "finish_reason": finish_reason,
             **data
         }
-
+        
     except Exception as e:
         error_entry = (request_id, str(e))
         result_entry = {
@@ -115,20 +158,20 @@ def run_inference(config_path, input_file, results_file):
         for line in f:
             if line.strip(): # Skip empty lines
                 dataset.append(json.loads(line))
-
+    
     results = {}
     errors = {}
+    
     start_time = time.time()
-
     print(f"Starting inference on {model_name} with {concurrent_requests} concurrent workers...")
-
+    
     with ThreadPoolExecutor(max_workers=concurrent_requests) as executor:
         # Submit all tasks to the pool
         future_to_req = {
             executor.submit(send_request, url, generation_config, api_key, data, i): i 
             for i, data in enumerate(dataset)
         }
-
+        
         # Process results as they complete
         with tqdm(total=len(dataset), desc="Processing requests") as pbar:
             for future in as_completed(future_to_req):
@@ -139,22 +182,21 @@ def run_inference(config_path, input_file, results_file):
                     errors[error_data[0]] = error_data[1]
                 
                 pbar.update(1)
-
+    
     end_time = time.time()
     elapsed_time = end_time - start_time
-
+    
     # Write sorted results
     sorted_results = [results[i] for i in sorted(results.keys())]
-
     with open(results_file, "w") as outfile:
         for result in sorted_results:
             json.dump(result, outfile)
             outfile.write('\n')
-
+    
     successful_requests = sum(1 for res in results.values() if res.get("response") is not None)
     total_requests = len(dataset)
     throughput = successful_requests / elapsed_time if elapsed_time > 0 else 0
-
+    
     stats = {
         "model": model_name,
         "total_requests": total_requests,
@@ -164,16 +206,16 @@ def run_inference(config_path, input_file, results_file):
         "elapsed_time": elapsed_time,
         "throughput": throughput,
     }
-
+    
     input_file_name = os.path.splitext(input_file)[0]
     stats_file_name = f"{input_file_name}_stats.json"
-
+    
     with open(stats_file_name, "w") as f:
         json.dump(stats, f, indent=4)
-
+    
     print(f"\nStatistics written to {stats_file_name}")
     print(f"Throughput: {throughput:.2f} requests/second")
-
+    
     if errors:
         print("=" * 20)
         print(f"Encountered {len(errors)} errors. First 5:")
@@ -186,6 +228,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, required=True, help="YAML config file")
     parser.add_argument("--input-file", type=str, required=True, help="JSONL file with input prompts")
     parser.add_argument("--results-file", type=str, required=True, help="Output file for results (JSONL)")
+    
     args = parser.parse_args()
-
+    
     run_inference(args.config, args.input_file, args.results_file)

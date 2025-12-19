@@ -1,0 +1,9 @@
+api_key: AIzaSyD-35eZTU6lXhxRMPddDy2ataShCKaBu_4
+model_name: gemini-3-flash-preview
+topP: 0.8
+topK: 
+thinkingConfig:
+  thinkingBudget: 64000
+
+concurrent_requests: 5
+temperature: 1.0
