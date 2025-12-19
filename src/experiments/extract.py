@@ -1,7 +1,7 @@
 """
 Usage:
 
-GEMINI_API_KEY=AIzaSyCPT6bscOkkLyqSBqLtJgfcOJO4fFwH180 python -m src.experiments.extract \
+python -m src.experiments.extract \
     --input-folder ./data/gemini/conversion/formatted/ \
     --config-path ./configs/gemini-3-pro.yaml \
     --response-folder ./data/gemini/extraction/raw \
