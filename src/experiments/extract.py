@@ -1,29 +1,12 @@
 """
 Usage:
-python -m src.benchmark.extract_p2_json \
-    --input-folder "./data/casestudies/json" \
-    --output-folder "./data/casestudies/problem02-v2/gpt-oss-20b" \
-    --config-path "./configs/gpt-oss-20b.yaml"
 
-python -m src.benchmark.extract_p2_json \
-    --input-folder "./data/casestudies/json" \
-    --output-folder "./data/casestudies/problem02-v2/gpt-oss-120b" \
-    --config-path "./configs/gpt-oss-120b.yaml"
-
-python -m src.benchmark.extract_p2_json \
-    --input-folder "./data/casestudies/json" \
-    --output-folder "./data/casestudies/problem02-v2/gemma-3-27b-it" \
-    --config-path "./configs/gemma-3-27b-it.yaml"
-
-python -m src.benchmark.extract_p2_json \
-    --input-folder "./data/casestudies/json" \
-    --output-folder "./data/casestudies/problem02-v2/medgemma-27b-it" \
-    --config-path "./configs/medgemma-27b-it.yaml"
-
-python -m src.benchmark.extract_p2_json \
-    --input-folder "./data/casestudies/json" \
-    --output-folder "./data/casestudies/problem02-v2/qwen3-32b" \
-    --config-path "./configs/qwen3-32b.yaml"
+GEMINI_API_KEY=AIzaSyCPT6bscOkkLyqSBqLtJgfcOJO4fFwH180 python -m src.experiments.extract \
+    --input-folder ./data/gemini/conversion/formatted/ \
+    --config-path ./configs/gemini-3-pro.yaml \
+    --response-folder ./data/gemini/extraction/raw \
+    --output-folder ./data/gemini/extraction/formatted \
+    --aggregate-only
 """
 
 from .templates import EXTRACTION_TEMPLATE
@@ -32,7 +15,7 @@ from ..utils.common import read_jsonl, read_json, parse_json
 from ..utils.document_builder import generate_document
 from pathlib import Path
 import pandas as pd
-import re
+import os
 import json
 import argparse
 
@@ -110,6 +93,7 @@ def main():
     parser.add_argument("--aggregate-only", action='store_true')
     args = parser.parse_args()
 
+    api_key = os.environ.get("GEMINI_API_KEY")
     input_folder = args.input_folder.resolve()
     response_folder = args.response_folder.resolve()
     output_folder = args.output_folder.resolve()
@@ -122,7 +106,7 @@ def main():
     if not args.aggregate_only:
         # 1. Build the prompts from the markdown files
         print("--- Step 1: Building Prompts ---")
-        prompts_file = build_prompts(input_folder, output_folder)
+        prompts_file = build_prompts(input_folder, response_folder)
 
         # 2. Run the inference using the generated prompts
         print("\n--- Step 2: Running Inference ---")
@@ -133,7 +117,8 @@ def main():
         run_inference(
             str(config_path),
             str(prompts_file),
-            str(responses_file)
+            str(responses_file),
+            api_key=api_key
         )
 
     # 3. Parse results

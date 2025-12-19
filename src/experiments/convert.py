@@ -15,7 +15,7 @@ from ..utils.common import read_jsonl, read_json, parse_json
 from .templates import PDF2TEXT_TEMPLATE
 from pathlib import Path
 import pandas as pd
-import re
+import os
 import json
 import argparse
 
@@ -68,6 +68,7 @@ def main():
     parser.add_argument("--aggregate-only", action='store_true')
     args = parser.parse_args()
 
+    api_key = os.environ.get("GEMINI_API_KEY")
     input_folder = args.input_folder.resolve()
     response_folder = args.response_folder.resolve()
     output_folder = args.output_folder.resolve()
@@ -91,7 +92,8 @@ def main():
         run_inference(
             str(config_path),
             str(prompts_file),
-            str(responses_file)
+            str(responses_file),
+            api_key=api_key
         )
     
     aggregate_results(response_folder, output_folder)

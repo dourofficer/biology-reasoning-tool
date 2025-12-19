@@ -137,13 +137,12 @@ def send_request(url, generation_config, api_key, data, request_id):
     
     return request_id, result_entry, error_entry
 
-def run_inference(config_path, input_file, results_file):
+def run_inference(config_path, input_file, results_file, api_key):
     """Run batch inference with config file using ThreadPoolExecutor."""
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
     # Extract connection specific details
-    api_key = config.pop("api_key")
     model_name = config.pop("model_name", "gemini-2.0-flash")
     concurrent_requests = config.pop("concurrent_requests", 10)
     

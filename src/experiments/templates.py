@@ -49,7 +49,7 @@ Ref:            Literal text
   "discussion": "String (Verbatim text of the Discussion section)"
 }
 ```
-"""
+""".strip()
 
 EXTRACTION_TEMPLATE = """
 # TASK: Scientific Reasoning Extraction
@@ -317,4 +317,76 @@ Now, analyze the provided scientific paper excerpt following these instructions.
 
 # PAPER EXCERPT:
 {{paper}}
-"""
+""".strip()
+
+TEMPLATE_PREDICTION_1 = """
+# TASK: Experimental Design Generation (Type Q1)
+
+## Overview
+You will act as a Principal Investigator planning a scientific study. You will be provided with a specific research question or objective (`main_content`). Your task is to generate the logical reasoning required to design an experiment to address this objective. You must construct the "Inquiry Logic" triplet by generating the missing `context` and `outcome`.
+
+## Logical Components
+
+1. **Input: Research Goal (`main_content`)**
+   This is the specific knowledge gap, hypothesis, or objective provided to you.
+
+2. **Generate: Justification (`context`)**
+   You must generate the scientific background or reasoning that makes the proposed experiment feasible or relevant. This should describe established biological principles, properties of specific model systems, or prior knowledge that serves as the foundation for the chosen method. Do not invent specific citations (e.g., "Ref: 12"), but rather state the general scientific consensus or established biological rule.
+
+3. **Generate: Methodology (`outcome`)**
+   You must generate the specific operational step, assay, or technique that creates the data necessary to answer the Research Goal. This should be a concrete action (e.g., "perform RNA-seq," "use CRISPR-Cas9 to knockout X," "stain with antibodies against Y") rather than a vague statement.
+
+## Reasoning Flow
+Your generation must follow this logical path:
+*Because we want to know [main_content], and considering [context], we will perform [outcome].*
+
+## Output Format
+Return your response in the following JSON format:
+
+```json
+{
+    "main_content": "The provided input goal",
+    "context": "The scientific justification or background principle used to select the method.",
+    "outcome": "The specific experimental method or assay performed."
+}
+```
+
+**Input (Goal):** 
+{{main_content}}
+""".strip()
+
+TEMPLATE_PREDICTION_2 = """
+# TASK: Scientific Interpretation Generation (Type Q2)
+
+## Overview
+You will act as a Senior Scientific Reviewer analyzing raw data. You will be provided with a specific empirical observation or statistical result (`main_content`). Your task is to apply scientific theory to this observation to derive a meaningful conclusion. You must construct the "Discovery Logic" triplet by generating the missing `context` and `outcome`.
+
+## Logical Components
+
+1. **Input: Empirical Observation (`main_content`)**
+   This is the specific data point, morphological description, or statistical finding provided to you.
+
+2. **Generate: Established Principle (`context`)**
+   You must generate the "lens" through which this data is interpreted. This should be an established biological rule, physical law, or known association (e.g., "It is well established that protein X is a marker for Y," or "Changes in nuclear shape are indicative of Z"). This provides the theoretical bridge between the raw number/image and its biological meaning.
+
+3. **Generate: New Insight (`outcome`)**
+   You must generate the novel conclusion or hypothesis that arises from combining the Observation with the Principle. This represents the new understanding or implication for the biological system (e.g., "Therefore, this suggests the pathway is upregulated," or "This indicates a transition to a mesenchymal state").
+
+## Reasoning Flow
+Your generation must follow this logical path:
+*We observed [main_content]. Since it is known that [context], we conclude that [outcome].*
+
+## Output Format
+Return your response in the following JSON format:
+
+```json
+{
+    "main_content": "The provided input observation",
+    "context": "The general biological rule or established theory applied to the data.",
+    "outcome": "The specific biological interpretation or conclusion derived."
+}
+```
+
+**Input (Observation):** 
+{{main_content}}
+""".strip()
