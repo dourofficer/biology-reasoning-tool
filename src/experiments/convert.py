@@ -2,8 +2,8 @@
 Usage:
 python -m src.experiments.convert \
     --input-folder ./data/gemini/pdf/ \
-    --config-path ./configs/gemini-3-flash.yaml \
-    --response-folder ./data/gemini/conversion/responses \
+    --config-path ./configs/gemini-3-pro.yaml \
+    --response-folder ./data/gemini/conversion/raw \
     --output-folder ./data/gemini/conversion/formatted \
     --aggregate-only
 """
