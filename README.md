@@ -3,51 +3,38 @@
 A pipeline for extracting logical reasoning structures from scientific research papers using Large Language Models (LLMs). The system identifies how authors connect empirical findings to established knowledge to form new hypotheses and conclusions.
 
 ## Overview
+This project implements a multi-stage pipeline to analyze scientific papers:
 
-This repository provides tools to:
+1. **PDF to JSON Conversion**: Extract structured text from scientific papers
+2. **Triplet Extraction**: Identify reasoning patterns (Q1: Inquiry Logic, Q2: Discovery Logic)
+3. **Triplet Prediction**: Generate missing components of reasoning structures
 
-1. **Convert PDFs to structured text** using document layout analysis and OCR
-2. **Extract logical triplets** from research papers that capture scientific reasoning:
-   - **Premise**: Novel findings from the current study
-   - **Connecting Principle**: Established biological knowledge from literature
-   - **Interpretation**: New hypotheses or conclusions
-3. **Run batch inference** across multiple LLM backends (vLLM, Google Gemini)
-4. **Analyze results** and generate structured outputs
+See `documentation/experiment_overview.md` for detailed explanation of the experimental reasoning framework.
 
 ## Project Structure
 
 ```
 .
 ├── configs/                    # Model configuration files
-│   ├── gpt-oss-20b.yaml
-│   ├── gpt-oss-120b.yaml
-│   ├── gemma-3-27b-it.yaml
-│   └── gemini-2.5-flash.yaml
+│   ├── gemini-2.5-flash.yaml
+│   ├── gemini-3-flash.yaml
+│   └── gemini-3-pro.yaml
 ├── src/
-│   ├── pdf2text/              # PDF processing utilities
-│   │   ├── pdf2text.py        # Document conversion with layout analysis
-│   │   ├── vlm.py             # Vision-language model pipeline
-│   │   ├── annotate_pdf.py    # Layout visualization tools
-│   │   └── run_batch.sh       # Batch PDF processing
-│   ├── benchmark/             # Extraction pipelines
-│   │   ├── extract.py         # Unified extraction pipeline (md & json)
-│   │   └── templates.py       # Prompt templates for extraction
-│   ├── prediction/            # Experimental design prediction
-│   │   ├── predict.py
-│   │   └── templates.py       # Prompt templates for prediction
-│   └── utils/                 # Shared utilities
-│       ├── inference.py       # vLLM inference client
-│       ├── inference_gemini.py # Gemini API client
-│       ├── document_builder.py # Document generation
-│       └── common.py          # Data I/O utilities
-├── scripts/
-│   ├── vllm.sh               # vLLM server setup examples
-│   └── test_inference.sh     # Testing script
-├── data/
-│   └── inference_samples/    # Example prompts and results
-│   └── casestudies/          # Representative papers
-└── documentation/
-    └── experiment_overview.md # Scientific framework explanation
+│   ├── experiments/           # Main experiment scripts
+│   │   ├── convert.py        # PDF → JSON conversion
+│   │   ├── extract.py        # Triplet extraction
+│   │   ├── predict.py        # Triplet prediction
+│   │   └── templates.py      # Prompt templates
+│   └── utils/
+│       ├── inference_gemini.py
+│       ├── document_builder.py
+│       └── common.py
+└── data/
+    └── gemini/
+        ├── pdf/              # Input PDFs
+        ├── conversion/       # Conversion outputs
+        ├── extraction/       # Extraction outputs
+        └── prediction/       # Prediction outputs
 ```
 
 ## Installation
@@ -62,8 +49,8 @@ This repository provides tools to:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd <repository-name>
+git clone https://github.com/dourofficer/biology-reasoning-tool.git
+cd biology-reasoning-tool
 
 # Install dependencies (using uv recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -74,7 +61,148 @@ uv pip install vllm==0.10.2 --torch-backend=auto
 uv pip install docling==2.55.1
 ```
 
-## Usage
+## Experiments
+As all experiments are run with GEMINI models, please (create and) obtain your api key and save it as follows:
+
+```bash
+export GEMINI_API_KEY="your-api-key-here"
+```
+
+### Experiment 1: PDF to JSON Conversion
+Convert scientific papers from PDF format to structured JSON.
+
+**Input**: PDF files containing scientific papers  
+**Output**: JSON files with extracted sections (abstract, introduction, results, discussion)
+
+```bash
+python -m src.experiments.convert \
+    --input-folder ./data/gemini/pdf/ \
+    --config-path ./configs/gemini-3-pro.yaml \
+    --response-folder ./data/gemini/conversion/raw \
+    --output-folder ./data/gemini/conversion/formatted
+```
+
+**Options**:
+- `--input-folder`: Directory containing PDF files
+- `--config-path`: Model configuration file (choose from `configs/`)
+- `--response-folder`: Raw API responses
+- `--output-folder`: Formatted JSON outputs
+- `--aggregate-only`: Skip inference, only process existing responses
+
+**Output Format**:
+```json
+{
+  "article_title": "Paper Title",
+  "metadata": {
+    "doi": "10.xxxx/xxxxx",
+    "authors": ["Author 1", "Author 2"]
+  },
+  "abstract": "...",
+  "introduction": "...",
+  "results": {
+    "subsections": [
+      {
+        "title": "Subsection Title",
+        "content": "...",
+        "figures": ["Figure caption 1", "..."]
+      }
+    ]
+  },
+  "discussion": "..."
+}
+```
+
+### Experiment 2: Triplet Extraction
+
+Extract reasoning triplets (Q1 and Q2) from structured papers.
+
+**Q1 (Inquiry Logic)**: Research Question → Justification → Method  
+**Q2 (Discovery Logic)**: Observation → Theory → Interpretation
+
+**Input**: JSON files from Experiment 1  
+**Output**: CSV files with extracted triplets
+
+```bash
+python -m src.experiments.extract \
+    --input-folder ./data/gemini/conversion/formatted/ \
+    --config-path ./configs/gemini-3-pro.yaml \
+    --response-folder ./data/gemini/extraction/raw \
+    --output-folder ./data/gemini/extraction/formatted
+```
+
+**Options**:
+- `--input-folder`: Directory with JSON papers from Experiment 1
+- `--config-path`: Model configuration file
+- `--response-folder`: Raw extraction responses
+- `--output-folder`: Formatted CSV outputs (one per paper)
+- `--aggregate-only`: Skip inference, only aggregate results
+
+**Output Format**:
+Each paper generates a CSV with columns:
+- `title`: Paper title
+- `subsection`: Results subsection name
+- `type`: Q1 or Q2
+- `main_content`: Primary component (question/observation)
+- `context`: Background/justification
+- `outcome`: Method/interpretation
+
+### Experiment 3: Triplet Prediction
+
+Generate missing components of reasoning triplets.
+
+**Input**: 
+- JSON paper (from Experiment 1)
+- CSV/TSV file with partial triplets
+
+**Output**: Predictions for missing `context` and `outcome` components
+
+```bash
+python -m src.experiments.predict \
+    --paper-path ./data/gemini/conversion/formatted/mechanical.json \
+    --triplets-file ./data/gemini/triplets.mechanical.csv \
+    --output-folder ./data/gemini/prediction/ \
+    --config-path ./configs/gemini-3-pro.yaml
+```
+
+**Options**:
+- `--paper-path`: Path to specific JSON paper
+- `--triplets-file`: CSV/TSV with triplets to complete (must include `type`, `main_content`, `context`, `outcome` columns)
+- `--output-folder`: Output directory for predictions
+- `--config-path`: Model configuration file
+- `--aggregate-only`: Skip inference, only aggregate results
+
+**Input CSV Format**:
+```csv
+title,type,subsection,main_content,context,outcome
+Paper Title,Q1,Section 1,"To determine...",Original context,Original outcome
+```
+
+**Output CSV Format**:
+```csv
+title,type,subsection,main_content,context,outcome,predicted_context,predicted_outcome
+Paper Title,Q1,Section 1,"To determine...",Original,Original,Generated context,Generated outcome
+```
+
+## Model Configuration
+
+Configuration files in `configs/` specify model parameters:
+
+```yaml
+model_name: gemini-3-pro-preview  # Model identifier
+temperature: 1.0                   # Sampling temperature
+topP: 0.95                        # Nucleus sampling (optional)
+topK: 40                          # Top-K sampling (optional)
+thinkingConfig:                   # Extended thinking (Gemini 2+)
+  thinkingBudget: 64000
+concurrent_requests: 5            # Parallel API calls
+```
+
+**Available Gemini Configurations**:
+- `gemini-2.5-flash.yaml`: Fast, lower cost
+- `gemini-3-flash.yaml`: Balanced performance
+- `gemini-3-pro.yaml`: Highest quality (recommended for experiments)
+
+## Other Usages
 
 ### 1. PDF to Text Conversion
 
@@ -89,9 +217,7 @@ cd src/pdf2text
 bash run_batch.sh
 ```
 
-### 2. Model Server Setup
-
-**Option A: vLLM (Local)**
+### 2. VLLM Server Setup
 
 ```bash
 # Start vLLM server (see scripts/vllm.sh for examples)
@@ -104,14 +230,6 @@ vllm serve openai/gpt-oss-20b \
 	--max-model-len 32000 \
 	--max-num-batched-tokens 16000 \
 	--generation-config auto
-```
-
-**Option B: Google Gemini API**
-
-Configure your API key in `configs/gemini-*.yaml`:
-```yaml
-api_key: YOUR_API_KEY_HERE
-model_name: gemini-2.5-flash
 ```
 
 ### 3. Extract Reasoning Structures
@@ -171,7 +289,6 @@ concurrent_requests: 2
 
 **Gemini configs:**
 ```yaml
-api_key: YOUR_KEY
 model_name: gemini-2.5-flash
 temperature: 1.0
 topP: 0.8
@@ -179,30 +296,6 @@ thinkingConfig:
   thinkingBudget: 1000
 concurrent_requests: 5
 ```
-
-## Output Format
-
-Extracted triplets are saved in both JSONL and CSV formats:
-
-```json
-{
-  "title": "Paper Title",
-  "subsection": "Results subsection name",
-  "premise_finding": "We observed increased OXPHOS activity (Fig. 3a)",
-  "connecting_principle": "OXPHOS is known to regulate stem cell function (Ref: 12, 15)",
-  "interpretation": "These findings suggest OXPHOS mediates the mutation's effect"
-}
-```
-
-## Scientific Framework
-
-The extraction pipeline identifies logical argument structures where authors:
-
-1. Present a **novel finding** from their current study
-2. Connect it to **established biological knowledge**
-3. Derive a **new hypothesis or conclusion**
-
-See `documentation/experiment_overview.md` for detailed explanation of the experimental reasoning framework.
 
 ## Technical Concerns
 
