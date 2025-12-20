@@ -16,6 +16,8 @@ A research pipeline for extracting and analyzing scientific reasoning structures
   - [Experiment 2: Triplet Extraction](#experiment-2-triplet-extraction)
   - [Experiment 3: Triplet Prediction](#experiment-3-triplet-prediction)
 - [Configuration](#configuration)
+- [Other Usages](#other-usages)
+- [Technical Concerns](#technical-concerns)
 
 ## Features
 
@@ -76,6 +78,7 @@ uv venv
 source .venv/bin/activate
 uv pip install vllm==0.10.2 --torch-backend=auto
 uv pip install docling==2.55.1
+uv pip install PyPDF2==3.0.1
 
 3. Set up your Gemini API key:
 ```bash
@@ -109,6 +112,12 @@ python -m src.gemini-experiments.extract \
 - `context`: Justification or established theory
 - `outcome`: Methodology (Q1) or interpretation (Q2)
 
+**Note:** For this extraction pipeline, you are **RECOMMENDED** to truncate each of your PDF file up to 10 pages only. This is designed and tested with Nature papers only, in which the main text only appear within first 10 pages. Otherwise, processing a whole paper means including so many less relevant information from appendices, which make up for a major volume in a typical published paper. In other words, while it is possible to process a whole paper with Gemini, it would result in poorer performance.
+
+Though I did not include the truncation in the experiment pipelines, I do provide a script for you to truncate files yourself as follows:
+```bash
+python split.py document.pdf --slice 1 10 -o truncated_document.pdf
+```
 ---
 
 ## Experiments
@@ -515,11 +524,7 @@ python -m src.utils.inference_gemini \
 
 **Output:** JSONL with `request_id`, `reasoning`, `response`, and statistics file with throughput metrics.
 
----
-
-## Configuration
-
-### vLLM Model Configs
+### 6. vLLM Model Configs
 
 Located in `configs/` directory for self-hosted models:
 
@@ -539,6 +544,8 @@ concurrent_requests: 2          # Parallel requests
 - `configs/gpt-oss-120b.yaml` - 120B parameter reasoning model
 - `configs/gemma-3-27b-it.yaml` - Gemma 3 instruction-tuned
 - `configs/qwen3-32b.yaml` - Qwen3 with reasoning parser
+
+---
 
 ### Notes on Pipeline Differences
 
