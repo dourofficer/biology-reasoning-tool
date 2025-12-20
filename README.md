@@ -68,10 +68,13 @@ A research pipeline for extracting and analyzing scientific reasoning structures
 ### Setup
 
 1. Clone the repository
+```
 git clone https://github.com/dourofficer/biology-reasoning-tool.git
 cd biology-reasoning-tool
+```
 
 2. Install dependencies (using uv recommended)
+```
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.local/bin/env
 uv venv
@@ -79,6 +82,7 @@ source .venv/bin/activate
 uv pip install vllm==0.10.2 --torch-backend=auto
 uv pip install docling==2.55.1
 uv pip install PyPDF2==3.0.1
+```
 
 3. Set up your Gemini API key:
 ```bash
@@ -87,7 +91,7 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ## Quick Start: PDF Extraction
 
-Extract scientific reasoning triplets directly from PDF files in one command:
+Extract scientific reasoning triplets directly from PDF files in one command. The following script reads all PDF files from an input folder, sends them to Gemini API with extraction prompts, parses responses into structured triplets, and finally outputs CSV files with extracted Q1/Q2 triplets:
 
 ```bash
 python -m src.gemini-experiments.extract \
@@ -98,11 +102,9 @@ python -m src.gemini-experiments.extract \
     --input-format pdf
 ```
 
-**What this does:**
-1. Reads all PDF files from `./data/gemini-experiments/pdf`
-2. Sends them to Gemini API with extraction prompts
-3. Parses responses into structured triplets
-4. Outputs CSV files with extracted Q1/Q2 triplets
+**What you should do to get started:**
+1. Prepare all your PDF files from `./data/gemini-experiments/pdf`. If you want to process only 1 file, please make a directory dedicatedly for it, as the script has not conveniently support single file processing.
+2. Run the script above and view the results at `./data/gemini-experiments/extraction/from-pdf/formatted`. The output folder contains CSV files with extracted Q1/Q2 triplets.
 
 **Output:** Each PDF will generate a corresponding CSV file in the output folder with columns:
 - `title`: Paper title
@@ -116,7 +118,7 @@ python -m src.gemini-experiments.extract \
 
 Though I did not include the truncation in the experiment pipelines, I do provide a script for you to truncate files yourself as follows:
 ```bash
-python split.py document.pdf --slice 1 10 -o truncated_document.pdf
+python -m src.utils.split_pdf document.pdf --slice 1 10 -o truncated_document.pdf
 ```
 ---
 
