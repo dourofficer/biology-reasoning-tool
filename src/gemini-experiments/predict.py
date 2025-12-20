@@ -2,7 +2,7 @@
 Prediction pipeline for Q1 and Q2 triplets.
 
 Usage:
-python -m src.experiments.predict \
+python -m src.gemini-experiments.predict \
     --paper-path "./data/gemini-experiments/conversion/formatted/mechanical.json" \
     --triplets-file "./data/gemini-experiments/triplets.mechanical.csv" \
     --output-folder "./data/gemini-experiments/prediction/" \

@@ -1,7 +1,7 @@
 """
 Usage:
 
-python -m src.experiments.extract \
+python -m src.gemini-experiments.extract \
     --input-folder ./data/gemini-experiments/conversion/formatted/ \
     --config-path ./configs/gemini-3-pro.yaml \
     --response-folder ./data/gemini-experiments/extraction/from-json/raw \
@@ -9,7 +9,7 @@ python -m src.experiments.extract \
     --input-format json \
     --aggregate-only
 
-python -m src.experiments.extract \
+python -m src.gemini-experiments.extract \
     --input-folder ./data/gemini-experiments/pdf \
     --config-path ./configs/gemini-3-pro.yaml \
     --response-folder ./data/gemini-experiments/extraction/from-pdf/raw \

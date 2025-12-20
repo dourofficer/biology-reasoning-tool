@@ -1,6 +1,6 @@
 """
 Usage:
-python -m src.experiments.convert \
+python -m src.gemini-experiments.convert \
     --input-folder ./data/gemini-experiments/pdf/ \
     --config-path ./configs/gemini-3-pro.yaml \
     --response-folder ./data/gemini-experiments/conversion/raw \
