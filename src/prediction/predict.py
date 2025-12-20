@@ -50,6 +50,7 @@ def build_prompts(paper_path: Path, triplets_file: Path, output_folder: Path):
     paper = read_json(paper_path)
     prefix = generate_document(
         paper,
+        include_abstract=False,
         include_intro=True,
         include_result=False,
         chunk_subsections=False,

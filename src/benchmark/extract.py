@@ -77,6 +77,7 @@ def build_prompts_from_json(input_folder: Path, output_folder: Path):
         title = data.get("article_title", "Untitled Article")
         documents = generate_document(
             data,
+            include_abstract=True,
             include_intro=True,
             include_result=True,
             include_discussion=False,
